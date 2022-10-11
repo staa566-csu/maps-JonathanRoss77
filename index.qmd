@@ -1,0 +1,102 @@
+---
+title: "HW3"
+author: "Jonathan Ross"
+format: html
+editor: visual
+---
+
+## Hawaii Precipitation
+
+Using data from https://www.ncei.noaa.gov, precipitation data was collated from 4 weather stations on the islands of Hawaii. The maps below demonstrates precipitation in inches at each of the weather stations for the years 1980 (top map) and 2015 (bottom map). Hovering over the data points shows the annual rainfall at that particular weather station. 
+
+The spatial units in the graphs are longitude and latitude coordinates of the selected Hawaiian weather stations. 
+
+By examining this data, we can compare the location of the weather stations to each other as well as the amount of rainfall received at each station. 
+
+## 1980 Rain Totals in inches
+
+```{r}
+weather <- read.csv('Weather.csv')
+
+
+library(ggplot2)
+library(dplyr)
+library(ggdendro)
+library(mapproj)
+#make average prcp per year
+weather$year <- substr(weather$DATE, 1,4)
+p <- weather %>%
+  group_by(STATION, NAME, year) %>%
+  summarise(prcp=mean(PRCP),
+            Latitude=mean(LATITUDE), 
+            Longitude=mean(LONGITUDE)) 
+
+#New data sets for desired years
+
+q <- p[p[,3] ==1980,]
+w <- p[p[,3] ==2015,]
+library(leaflet)
+library(leafletCN)
+
+
+# define color palette
+pal <- colorNumeric(
+  palette = "magma",
+  domain = p$PRCP)
+
+#create new labels for annual prcp average
+labsq <- 
+  lapply(seq(nrow(q)),
+         function(i){
+  paste0("Annual Prcp average (inches): ", as.character(round(q[i, 4],4)))})
+
+
+leaflet(q) %>% 
+  addTiles() %>%
+  addMarkers(~Longitude, ~Latitude, 
+             label = ~lapply(labsq, htmltools::HTML)) %>%
+  setView(lng = -158, lat =20, zoom = 6)
+
+  
+
+#create new labels for annual prcp average
+labsw <- 
+  lapply(seq(nrow(w)),
+         function(i){
+  paste0("Annual Prcp average (inches): ", as.character(round(w[i, 4],4)))})
+```
+
+## 2015 Rain Totals in inches
+
+```{r}
+leaflet(w) %>% 
+  addTiles() %>%
+  addMarkers(~Longitude, ~Latitude, 
+             label = ~lapply(labsw, htmltools::HTML)) %>%
+setView(lng = -158, lat =20, zoom = 6)
+```
+
+## Tabular Comparison
+
+```{r}
+colnames(q) <- c("Station", "Name", "Year", "Prcp 1980", "Latitude", "Longitude")
+colnames(w) <- c("Station", "Name", "Year", "Prcp 2015", "Latitude", "Longitude")
+q1 <- q[,-3]
+w1 <- w[-3]
+r <- merge(q1,w1)
+library(knitr)
+kable(r)
+```
+
+Rainfall totals remained relatively constant between the years 1980 and 2015 as shown in the tabular view. The chart below compares rainfall totals over time. Over the time span, the relative ranking of rainfall on the Hawaiian islands remains the same with Station USW00021504 consistently recievivng more rainfall than the other stations. 
+
+```{r, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(plotly)
+rain <- ggplot(data = p, aes(x = as.numeric(year), y = prcp, color = STATION)) + 
+  geom_point() + geom_line() + xlab("Year") + ylab("Precipitation Inches")  
+
+ggplotly(rain)
+```
+
+
